@@ -504,3 +504,9 @@ config SND_SOC_MSM_HDMI_CODEC_RX
 	help
 	HDMI audio drivers should be built only if the platform
         supports hdmi panel.
+
+config FRANCO_SOUND_CONTROL
+	bool "WCD9320 Sound Control"
+	default y
+	help
+	Franciscofranco WCD9320 chipset sound control.
