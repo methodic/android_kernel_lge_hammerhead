@@ -27,10 +27,6 @@
 #include <mach/sec_debug.h>
 #endif
 
-#ifdef CONFIG_ARCH_MSM8226  //should be removed
-extern struct class *sec_class;
-#endif
-
 /* Common PNP defines */
 #define QPNP_PON_REVISION2(base)		(base + 0x01)
 
@@ -131,6 +127,7 @@ struct qpnp_pon {
 };
 
 static struct qpnp_pon *sys_reset_dev;
+extern struct class *sec_class;
 #ifdef CONFIG_SEC_PM_DEBUG
 static int wake_enabled;
 #endif
