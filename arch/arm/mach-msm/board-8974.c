@@ -45,6 +45,9 @@
 #include <mach/socinfo.h>
 #include <mach/msm_smem.h>
 #include <linux/module.h>
+#ifdef CONFIG_ANDROID_PERSISTENT_RAM
+#include <linux/persistent_ram.h>
+#endif
 
 #include "board-dt.h"
 #include "clock.h"
@@ -320,11 +323,39 @@ static struct reserve_info msm8974_reserve_info __initdata = {
 	.paddr_to_memtype = msm8974_paddr_to_memtype,
 };
 
+
+#ifdef CONFIG_ANDROID_PERSISTENT_RAM
+#define RAMCONSOLE_PHYS_ADDR 0x1FB00000
+static struct persistent_ram_descriptor per_ram_descs[] = {
+{
+	.name = "ram_console",
+	.size = SZ_1M,
+}
+};
+
+static struct persistent_ram per_ram = {
+	.descs = per_ram_descs,
+	.num_descs = ARRAY_SIZE(per_ram_descs),
+	.start = RAMCONSOLE_PHYS_ADDR,
+	.size = SZ_1M
+};
+#endif
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+static struct platform_device ram_console_device = {
+        .name = "ram_console",
+        .id = -1,
+};
+#endif
+
 void __init msm_8974_reserve(void)
 {
 	reserve_info = &msm8974_reserve_info;
 	of_scan_flat_dt(dt_scan_for_memory_reserve, msm8974_reserve_table);
 	msm_reserve();
+#ifdef CONFIG_ANDROID_PERSISTENT_RAM
+	persistent_ram_early_init(&per_ram);
+#endif
 }
 
 static void __init msm8974_early_memory(void)
@@ -465,6 +496,9 @@ void __init msm8974_init(void)
 	samsung_sys_class_init();
 	msm_8974_init_gpiomux();
 	regulator_has_full_constraints();
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+        platform_device_register(&ram_console_device);
+#endif
 	board_dt_populate(adata);
 	msm8974_add_drivers();
 
