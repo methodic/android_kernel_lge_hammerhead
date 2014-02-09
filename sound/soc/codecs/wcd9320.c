@@ -72,6 +72,10 @@
 /* RX_HPH_CNP_WG_TIME increases by 0.24ms */
 #define TAIKO_WG_TIME_FACTOR_US	240
 
+#if defined(CONFIG_FRANCO_SOUND_CONTROL)
+int headphones_volume, speaker_volume, sound_control;
+#endif
+
 static atomic_t kp_taiko_priv;
 static int spkr_drv_wrnd_param_set(const char *val,
 				   const struct kernel_param *kp);
@@ -4597,6 +4601,25 @@ static int taiko_hw_params(struct snd_pcm_substream *substream,
 	u32 compander_fs;
 	int ret;
 
+#if defined(CONFIG_FRANCO_SOUND_CONTROL)
+	int val;
+
+	if (sound_control == 1) {
+		val = taiko_read(codec, TAIKO_A_CDC_RX1_VOL_CTL_B2_CTL);
+		if (val != headphones_volume) {
+			taiko_write(codec, TAIKO_A_CDC_RX1_VOL_CTL_B2_CTL, headphones_volume);
+			taiko_write(codec, TAIKO_A_CDC_RX2_VOL_CTL_B2_CTL, headphones_volume);
+			pr_info("Sound Control: Headphones override: %d -> %d\n", val, taiko_read(codec, TAIKO_A_CDC_RX1_VOL_CTL_B2_CTL));
+		}
+
+		val = taiko_read(codec, TAIKO_A_CDC_RX7_VOL_CTL_B2_CTL);
+		if (val != speaker_volume) {
+			taiko_write(codec, TAIKO_A_CDC_RX7_VOL_CTL_B2_CTL, speaker_volume);
+			pr_info("Sound Control: Speaker override: %d -> %d\n", val, taiko_read(codec, TAIKO_A_CDC_RX7_VOL_CTL_B2_CTL));
+		}
+	}
+#endif
+
 	pr_info("%s: dai_name = %s DAI-ID %x rate %d num_ch %d\n", __func__,
 		 dai->name, dai->id, params_rate(params),
 		 params_channels(params));
@@ -6421,8 +6444,6 @@ static void taiko_update_reg_defaults(struct snd_soc_codec *codec)
 	u32 i;
 	struct wcd9xxx *taiko_core = dev_get_drvdata(codec->dev->parent);
 
-	pr_info("Update TAIKO register defaults.\n");
-
 	for (i = 0; i < ARRAY_SIZE(taiko_reg_defaults); i++)
 		snd_soc_write(codec, taiko_reg_defaults[i].reg,
 			      taiko_reg_defaults[i].val);
@@ -7001,96 +7022,47 @@ static struct regulator *taiko_codec_find_regulator(struct snd_soc_codec *codec,
 	return NULL;
 }
 
+#if defined(CONFIG_FRANCO_SOUND_CONTROL)
 struct sound_control {
 	int default_headphones_value;
-	int default_headset_value;
 	int default_speaker_value;
-	int default_mic_value;
 	struct snd_soc_codec *snd_control_codec;
-} soundcontrol;
+}
+soundcontrol;
 
-void update_headphones_volume_boost(int vol_boost)
+void update_enable_control(int value)
 {
-	int default_val = soundcontrol.default_headphones_value;
-	int boosted_val = vol_boost != 0 ? 
-		default_val + vol_boost : default_val;
-
-	pr_info("Sound Control: Headphones default value %d\n", default_val);
-
-	taiko_write(soundcontrol.snd_control_codec,
-		TAIKO_A_CDC_RX1_VOL_CTL_B2_CTL, boosted_val);
-	taiko_write(soundcontrol.snd_control_codec,
-		TAIKO_A_CDC_RX2_VOL_CTL_B2_CTL, boosted_val);
-	
-	pr_info("Sound Control: Boosted Headphones RX1 value %d\n",
-		taiko_read(soundcontrol.snd_control_codec,
-		TAIKO_A_CDC_RX1_VOL_CTL_B2_CTL));
-
-	pr_info("Sound Control: Boosted Headphones RX2 value %d\n", 
-		taiko_read(soundcontrol.snd_control_codec, 
-		TAIKO_A_CDC_RX2_VOL_CTL_B2_CTL));
+	sound_control = value;
+	pr_info("Sound Control: Enabled: %d\n", sound_control);
 }
 
-void update_headset_boost(int vol_boost)
+void update_headphones_boost(int volume)
 {
-	int default_val = soundcontrol.default_headset_value;
-	int boosted_val = vol_boost != 0 ? 
-		default_val + vol_boost : default_val;
+	int default_val = soundcontrol.default_headphones_value, val;
+	int boosted_val = volume != 0 ? 
+		default_val + volume : default_val;
 
-	pr_info("Sound Control: Headset default value %d\n", default_val);
+	taiko_write(soundcontrol.snd_control_codec, TAIKO_A_CDC_RX1_VOL_CTL_B2_CTL, boosted_val);
+	taiko_write(soundcontrol.snd_control_codec, TAIKO_A_CDC_RX2_VOL_CTL_B2_CTL, boosted_val);
 
-	taiko_write(soundcontrol.snd_control_codec,
-		TAIKO_A_RX_HPH_R_GAIN, boosted_val);
-	taiko_write(soundcontrol.snd_control_codec,
-		TAIKO_A_RX_HPH_L_GAIN, boosted_val);
-	
-	pr_info("Sound Control: Boosted Headset R value %d\n",
-		taiko_read(soundcontrol.snd_control_codec,
-		TAIKO_A_RX_HPH_R_GAIN));
-
-	pr_info("Sound Control: Boosted Headset L value %d\n", 
-		taiko_read(soundcontrol.snd_control_codec, 
-		TAIKO_A_RX_HPH_L_GAIN));
+	val = taiko_read(soundcontrol.snd_control_codec, TAIKO_A_CDC_RX1_VOL_CTL_B2_CTL);
+	headphones_volume = val;
+	pr_info("Sound Control: Headphones: %d\n", val);
 }
 
-void update_speaker_gain(int vol_boost)
+void update_speaker_boost(int volume)
 {
-	int default_val = soundcontrol.default_speaker_value;
-	int boosted_val = vol_boost != 0 ? 
-		default_val + vol_boost : default_val;
+	int default_val = soundcontrol.default_speaker_value, val;
+	int boosted_val = volume != 0 ? 
+		default_val + volume : default_val;
 
-	pr_info("Sound Control: Speaker default value %d\n", default_val);
+	taiko_write(soundcontrol.snd_control_codec, TAIKO_A_CDC_RX7_VOL_CTL_B2_CTL, boosted_val);
 
-	taiko_write(soundcontrol.snd_control_codec,
-		TAIKO_A_CDC_RX3_VOL_CTL_B2_CTL, boosted_val);
-
-	taiko_write(soundcontrol.snd_control_codec,
-		TAIKO_A_CDC_RX7_VOL_CTL_B2_CTL, boosted_val);
-	
-	pr_info("Sound Control: Boosted Speaker RX3 value %d\n",
-		taiko_read(soundcontrol.snd_control_codec,
-		TAIKO_A_CDC_RX3_VOL_CTL_B2_CTL));
-
-	pr_info("Sound Control: Boosted Speaker RX7 value %d\n",
-		taiko_read(soundcontrol.snd_control_codec,
-		TAIKO_A_CDC_RX7_VOL_CTL_B2_CTL));
+	val = taiko_read(soundcontrol.snd_control_codec, TAIKO_A_CDC_RX7_VOL_CTL_B2_CTL);
+	speaker_volume = val;
+	pr_info("Sound Control: Speaker: %d\n", val);
 }
-
-void update_mic_gain(int vol_boost)
-{
-	int default_val = soundcontrol.default_mic_value;
-	int boosted_val = vol_boost != 0 ? 
-		default_val + vol_boost : default_val;
-
-	pr_info("Sound Control: Mic default value %d\n", default_val);
-
-	taiko_write(soundcontrol.snd_control_codec,
-		TAIKO_A_CDC_TX7_VOL_CTL_GAIN, boosted_val);
-	
-	pr_info("Sound Control: Boosted Mic value %d\n",
-		taiko_read(soundcontrol.snd_control_codec,
-		TAIKO_A_CDC_TX7_VOL_CTL_GAIN));
-}
+#endif
 
 static int taiko_codec_probe(struct snd_soc_codec *codec)
 {
@@ -7105,7 +7077,9 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 	struct wcd9xxx *core = dev_get_drvdata(codec->dev->parent);
 	struct wcd9xxx_core_resource *core_res;
 
+#if defined(CONFIG_FRANCO_SOUND_CONTROL)
 	soundcontrol.snd_control_codec = codec;
+#endif
 
 	codec->control_data = dev_get_drvdata(codec->dev->parent);
 	control = codec->control_data;
@@ -7283,17 +7257,12 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 
 	codec->ignore_pmdown_time = 1;
 
-	/*
-	 * Get the default values during probe
-	 */
-	soundcontrol.default_headphones_value = taiko_read(codec, 
-		TAIKO_A_CDC_RX1_VOL_CTL_B2_CTL);
-	soundcontrol.default_headset_value = taiko_read(codec,
-		TAIKO_A_RX_HPH_R_GAIN);
-	soundcontrol.default_speaker_value = taiko_read(codec,
-		TAIKO_A_CDC_RX3_VOL_CTL_B2_CTL);
-	soundcontrol.default_mic_value = taiko_read(codec,
-		TAIKO_A_CDC_TX7_VOL_CTL_GAIN);
+#if defined(CONFIG_FRANCO_SOUND_CONTROL)
+	soundcontrol.default_headphones_value = taiko_read(codec, TAIKO_A_CDC_RX1_VOL_CTL_B2_CTL);
+	soundcontrol.default_speaker_value = taiko_read(codec, TAIKO_A_CDC_RX7_VOL_CTL_B2_CTL);
+	headphones_volume = soundcontrol.default_headphones_value;
+	speaker_volume = soundcontrol.default_speaker_value;
+#endif
 
 	return ret;
 
