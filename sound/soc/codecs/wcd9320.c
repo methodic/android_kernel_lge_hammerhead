@@ -73,7 +73,7 @@
 #define TAIKO_WG_TIME_FACTOR_US	240
 
 #if defined(CONFIG_FRANCO_SOUND_CONTROL)
-int headphones_volume, speaker_volume, sound_control;
+int headphones_volume, speaker_volume, mic_volume, sound_control;
 #endif
 
 static atomic_t kp_taiko_priv;
@@ -4617,6 +4617,12 @@ static int taiko_hw_params(struct snd_pcm_substream *substream,
 			taiko_write(codec, TAIKO_A_CDC_RX7_VOL_CTL_B2_CTL, speaker_volume);
 			pr_info("Sound Control: Speaker override: %d -> %d\n", val, taiko_read(codec, TAIKO_A_CDC_RX7_VOL_CTL_B2_CTL));
 		}
+
+		val = taiko_read(codec, TAIKO_A_CDC_TX6_VOL_CTL_GAIN);
+		if (val != mic_volume) {
+			taiko_write(codec, TAIKO_A_CDC_TX6_VOL_CTL_GAIN, mic_volume);
+			pr_info("Sound Control: Microphone override: %d -> %d\n", val, taiko_read(codec, TAIKO_A_CDC_TX6_VOL_CTL_GAIN));
+		}
 	}
 #endif
 
@@ -7026,6 +7032,7 @@ static struct regulator *taiko_codec_find_regulator(struct snd_soc_codec *codec,
 struct sound_control {
 	int default_headphones_value;
 	int default_speaker_value;
+	int default_mic_value;
 	struct snd_soc_codec *snd_control_codec;
 }
 soundcontrol;
@@ -7061,6 +7068,19 @@ void update_speaker_boost(int volume)
 	val = taiko_read(soundcontrol.snd_control_codec, TAIKO_A_CDC_RX7_VOL_CTL_B2_CTL);
 	speaker_volume = val;
 	pr_info("Sound Control: Speaker: %d\n", val);
+}
+
+void update_mic_boost(int volume)
+{
+	int default_val = soundcontrol.default_mic_value, val;
+	int boosted_val = volume != 0 ? 
+		default_val + volume : default_val;
+
+	taiko_write(soundcontrol.snd_control_codec, TAIKO_A_CDC_TX6_VOL_CTL_GAIN, boosted_val);
+
+	val = taiko_read(soundcontrol.snd_control_codec, TAIKO_A_CDC_TX6_VOL_CTL_GAIN);
+	mic_volume = val;
+	pr_info("Sound Control: Microphone: %d\n", val);
 }
 #endif
 
@@ -7260,8 +7280,10 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 #if defined(CONFIG_FRANCO_SOUND_CONTROL)
 	soundcontrol.default_headphones_value = taiko_read(codec, TAIKO_A_CDC_RX1_VOL_CTL_B2_CTL);
 	soundcontrol.default_speaker_value = taiko_read(codec, TAIKO_A_CDC_RX7_VOL_CTL_B2_CTL);
+	soundcontrol.default_mic_value = taiko_read(codec, TAIKO_A_CDC_TX6_VOL_CTL_GAIN);
 	headphones_volume = soundcontrol.default_headphones_value;
 	speaker_volume = soundcontrol.default_speaker_value;
+	mic_volume = soundcontrol.default_mic_value;
 #endif
 
 	return ret;
