@@ -263,9 +263,7 @@ static void hfi_process_event_notify(
 		break;
 	case HFI_EVENT_RELEASE_BUFFER_REFERENCE:
 		dprintk(VIDC_INFO, "HFI_EVENT_RELEASE_BUFFER_REFERENCE\n");
-		if (!validate_session_pkt(sessions, sess, session_lock))
-			hfi_process_evt_release_buffer_ref(callback,
-				device_id, pkt);
+		hfi_process_evt_release_buffer_ref(callback, device_id, pkt);
 		break;
 	default:
 		dprintk(VIDC_WARN, "hal_process_event_notify:unkown_event_id");
