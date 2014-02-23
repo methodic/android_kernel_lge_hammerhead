@@ -221,7 +221,7 @@ static struct gpiomux_setting blsp7_i2c_config = {
     .pull = GPIOMUX_PULL_NONE,
 };
 
-#if !defined(CONFIG_TDMB)
+#if !defined(CONFIG_TDMB) && !defined(CONFIG_GSM_MODEM_SPRD6500)
 static struct gpiomux_setting gpio_spi_cs2_config = {
 	.func = GPIOMUX_FUNC_4,
 	.drv = GPIOMUX_DRV_6MA,
@@ -230,7 +230,7 @@ static struct gpiomux_setting gpio_spi_cs2_config = {
 #endif
 
 
-#if !defined(CONFIG_TDMB)
+#if !defined(CONFIG_TDMB) && !defined(CONFIG_GSM_MODEM_SPRD6500)
 static struct gpiomux_setting gpio_spi_susp_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -258,12 +258,13 @@ static struct msm_gpiomux_config msm_eth_configs[] = {
 };
 #endif
 
-#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE)
+#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE) || defined(CONFIG_GSM_MODEM_SPRD6500)
 static struct gpiomux_setting gpio_spi_qup3_config = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
+#if !defined(CONFIG_GSM_MODEM_SPRD6500)
 static struct gpiomux_setting gpio_tdmb_int_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -286,6 +287,7 @@ static struct msm_gpiomux_config tdmb_int_config[] __initdata = {
 		},
 	},
 };
+#endif
 #endif
 
 #if 0 // MCU pin
@@ -370,6 +372,22 @@ static struct gpiomux_setting gpio_i2c_config_5 = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+#if defined(CONFIG_MACH_H3GDUOS)
+static struct gpiomux_setting lcd_en_act_cfg = {
+	.func = GPIOMUX_FUNC_2, //GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct gpiomux_setting lcd_en_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO, 
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+#else
 static struct gpiomux_setting lcd_en_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -382,6 +400,8 @@ static struct gpiomux_setting lcd_en_sus_cfg = {
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
 };
+
+#endif
 
 static struct gpiomux_setting taiko_reset = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -753,7 +773,7 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_spi_cs3_config,
 		},
 	},
-#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE)
+#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE) || defined(CONFIG_GSM_MODEM_SPRD6500)
 	{
 		.gpio	   = 8,		/* BLSP1 QUP3 SPI_DATA_MOSI */
 		.settings = {
@@ -1177,7 +1197,14 @@ static struct msm_gpiomux_config sd_card_det __initdata = {
 		[GPIOMUX_SUSPENDED] = &sd_card_det_sleep_config,
 	},
 };
-
+#ifdef CONFIG_MACH_H3GDUOS
+ static struct gpiomux_setting cam_mclk2_suspend_settings = {
+	.func = GPIOMUX_FUNC_GPIO, 
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+#endif
 static struct msm_gpiomux_config msm_sensor_configs_dragonboard[] __initdata = {
 	{
 		.gpio = 15, /* CAM_MCLK0 */
@@ -1193,6 +1220,15 @@ static struct msm_gpiomux_config msm_sensor_configs_dragonboard[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &cam_settings[1],
 		},
 	},
+#ifdef CONFIG_MACH_H3GDUOS
+	{
+		.gpio = 17, /* CAM_MCLK2 */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[0],
+			[GPIOMUX_SUSPENDED] = &cam_mclk2_suspend_settings,
+		},
+	},
+#else
 	{
 		.gpio = 17, /* CAM_MCLK2 */
 		.settings = {
@@ -1200,6 +1236,7 @@ static struct msm_gpiomux_config msm_sensor_configs_dragonboard[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &cam_settings[1],
 		},
 	},
+#endif
 #if !defined(CONFIG_TDMB)
 	{
 		.gpio = 18, /* WEBCAM1_RESET_N / CAM_MCLK3 */

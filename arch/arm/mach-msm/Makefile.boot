@@ -98,12 +98,21 @@ ifeq ($(CONFIG_SEC_LOCALE_KOR),y)
 	dtb-y += msm8974-sec-hltekor-r06.dtb
 	dtb-y += msm8974-sec-hltekor-r07.dtb
 else
-	dtb-y += msm8974-sec-hlte-r03.dtb
-	dtb-y += msm8974-sec-hlte-r04.dtb
-	dtb-y += msm8974-sec-hlte-r05.dtb
-	dtb-y += msm8974-sec-hlte-r06.dtb
-	dtb-y += msm8974-sec-hlte-r07.dtb
-	dtb-y += msm8974-sec-hlte-r09.dtb
+	ifeq ($(CONFIG_MACH_H3GDUOS),y)
+		dtb-y	+= msm8974-sec-h3gchnduos-r03.dtb
+		dtb-y	+= msm8974-sec-h3gchnduos-r04.dtb
+		dtb-y	+= msm8974-sec-h3gchnduos-r05.dtb
+		dtb-y	+= msm8974-sec-h3gchnduos-r06.dtb
+		dtb-y	+= msm8974-sec-h3gchnduos-r07.dtb
+		dtb-y	+= msm8974-sec-h3gchnduos-r09.dtb
+	else
+		dtb-y += msm8974-sec-hlte-r03.dtb
+		dtb-y += msm8974-sec-hlte-r04.dtb
+		dtb-y += msm8974-sec-hlte-r05.dtb
+		dtb-y += msm8974-sec-hlte-r06.dtb
+		dtb-y += msm8974-sec-hlte-r07.dtb
+		dtb-y += msm8974-sec-hlte-r09.dtb
+	endif
 endif
 endif
 	dtb-$(CONFIG_SEC_LT03_PROJECT)	+= msm8974-sec-lt03-r00.dtb

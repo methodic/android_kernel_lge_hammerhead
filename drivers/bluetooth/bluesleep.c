@@ -233,49 +233,57 @@ static void bluesleep_tx_data_wakeup(void)
  */
 static void bluesleep_sleep_work(struct work_struct *work)
 {
-	if (mutex_is_locked(&bluesleep_mutex))
-		BT_DBG("Wait for mutex unlock in bluesleep_sleep_work");
+    if (mutex_is_locked(&bluesleep_mutex))
+        BT_DBG("Wait for mutex unlock in bluesleep_sleep_work");
 
-	mutex_lock(&bluesleep_mutex);
+    mutex_lock(&bluesleep_mutex);
 
-	if (bluesleep_can_sleep()) {
-		/* already asleep, this is an error case */
-		if (test_bit(BT_ASLEEP, &flags)) {
-			BT_DBG("already asleep");
-			mutex_unlock(&bluesleep_mutex);
-			return;
-		}
+    if (bluesleep_can_sleep()) {
+        /* already asleep, this is an error case */
+        if (test_bit(BT_ASLEEP, &flags)) {
+            BT_DBG("already asleep");
+            mutex_unlock(&bluesleep_mutex);
+            return;
+        }
 
-		if (msm_hs_tx_empty(bsi->uport)) {
-			BT_DBG("going to sleep...");
+        if (msm_hs_tx_empty(bsi->uport)) {
+            if (test_bit(BT_TXDATA, &flags)) {
+                BT_DBG("TXDATA remained. Wait until timer expires.");
 
-			set_bit(BT_ASLEEP, &flags);
-			/*Deactivating UART */
-			hsuart_power(0);
+                mod_timer(&tx_timer, jiffies + TX_TIMER_INTERVAL * HZ);
+                mutex_unlock(&bluesleep_mutex);
+                return;
+            }
 
-			/*Deactivating UART */
-			/* UART clk is not turned off immediately. Release
-			 * wakelock after 500 ms.
-			 */
-			wake_lock_timeout(&bsi->wake_lock, HZ / 2);
-		} else {
-			BT_DBG("host can enter sleep but some tx remained.");
+            BT_DBG("going to sleep...");
 
-			mod_timer(&tx_timer, jiffies + TX_TIMER_INTERVAL * HZ);
-			mutex_unlock(&bluesleep_mutex);
-			return;
-		}
-	} else if (!test_bit(BT_EXT_WAKE, &flags)
-			&& !test_bit(BT_ASLEEP, &flags)) {
-		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
-		if (bsi->has_ext_wake == 1) {
-			gpio_set_value(bsi->ext_wake, 1);
-		}
-		set_bit(BT_EXT_WAKE, &flags);
-	} else {
-		bluesleep_sleep_wakeup();
-	}
-	mutex_unlock(&bluesleep_mutex);
+            set_bit(BT_ASLEEP, &flags);
+            /*Deactivating UART */
+            hsuart_power(0);
+
+            /*Deactivating UART */
+            /* UART clk is not turned off immediately. Release
+            * wakelock after 500 ms.
+            */
+            wake_lock_timeout(&bsi->wake_lock, HZ / 2);
+            } else {
+            BT_DBG("host can enter sleep but some tx remained.");
+
+            mod_timer(&tx_timer, jiffies + TX_TIMER_INTERVAL * HZ);
+            mutex_unlock(&bluesleep_mutex);
+            return;
+        }
+    } else if (!test_bit(BT_EXT_WAKE, &flags)
+            && !test_bit(BT_ASLEEP, &flags)) {
+        mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+        if (bsi->has_ext_wake == 1) {
+            gpio_set_value(bsi->ext_wake, 1);
+        }
+        set_bit(BT_EXT_WAKE, &flags);
+    } else {
+        bluesleep_sleep_wakeup();
+    }
+    mutex_unlock(&bluesleep_mutex);
 }
 
 /**

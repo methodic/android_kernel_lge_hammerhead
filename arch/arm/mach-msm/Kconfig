@@ -1410,6 +1410,34 @@ config MACH_H3G_CHN_OPEN
 	help
 	  Support for Samsung H3G CHN OPEN device.
 	  
+config MACH_H3G_CHN_CMCC
+	default n
+	bool "Samsung model H3G_CHN_CMCC"
+	select SEC_H_PROJECT
+	help
+	  Support for Samsung H3G_CHN_CMCC device.
+
+config MACH_H3GDUOS_CTC
+	default n
+	bool "Samsung model H3GDUOS_CTC"
+	select SEC_H_PROJECT
+	help
+	  Support for Samsung H3GDUOS_CTC device.
+
+config MACH_H3GDUOS
+	default n
+	bool "Samsung model H3GDUOS"
+	select SEC_H_PROJECT
+	help
+	  Support for Samsung H3GDUOS device.	  
+
+config MACH_H3GDUOS_CU
+	default n
+	bool "Samsung model H3GDUOS_CU"
+	select SEC_H_PROJECT
+	help
+	  Support for Samsung H3GDUOS_CU device.  
+	  
 config MACH_HLTESPR
 	default n
 	bool "Samsung model HLTESPR"
@@ -3651,6 +3679,10 @@ config TIMA_LOG
        help
          TIMA Log dumping support
 
+config PCM_ROUTE_VOICE_STUB
+	bool "External AUXPCM device route to SLIMBUS or WCN(BT) using the VOICE_STUB Front End"
+	default n
+	depends on ARCH_MSM8974
 
 config KRAIT_REGULATOR
 	bool "Support Kraits powered via ganged regulators in the pmic"

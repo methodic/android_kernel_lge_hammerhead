@@ -5000,9 +5000,14 @@ static struct clk_lookup msm_clocks_8974pro_only[] __initdata = {
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9925000.i2c"), /* BLSP#3 */
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_i2c_apps_clk.c, "f9925000.i2c"), /* BLSP#3 */
 
+#if defined(CONFIG_GSM_MODEM_SPRD6500)
+	CLK_LOOKUP("iface_clk", gcc_blsp2_ahb_clk.c, "f995d000.uart"),
+	CLK_LOOKUP("core_clk", gcc_blsp2_uart1_apps_clk.c, "f995d000.uart"),
+#else
 	/*  Health cover UART clocks */
 	CLK_LOOKUP("iface_clk", gcc_blsp2_ahb_clk.c, "f995d000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp2_uart1_apps_clk.c, "f995d000.serial"),
+#endif
 
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9923000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup1_i2c_apps_clk.c, "f9923000.i2c"),
@@ -5073,7 +5078,7 @@ static struct clk_lookup msm_clocks_8974_only[] __initdata = {
         CLK_LOOKUP("vib_src_clk", mmss_gp1_clk_src.c, NULL),
         CLK_LOOKUP("vib_gp1_clk", camss_gp1_clk.c, NULL),
         #endif
-#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE)
+#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE) || defined(CONFIG_GSM_MODEM_SPRD6500)
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9925000.spi"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_spi_apps_clk.c, "f9925000.spi"),
 #endif
@@ -5131,7 +5136,11 @@ static struct clk_lookup msm_clocks_8974_only[] __initdata = {
 	CLK_LOOKUP("cam_gp0_clk", camss_gp0_clk.c, NULL),
 	CLK_LOOKUP("cam_gp1_clk", camss_gp1_clk.c, NULL),
 #ifdef CONFIG_NFC_PN547_PMC8974_CLK_REQ
+#ifdef CONFIG_NFC_I2C_OVERWRITE
+	CLK_LOOKUP("nfc_clk", cxo_d1_pin.c, NULL),
+#else
 	CLK_LOOKUP("nfc_clk", cxo_d1_pin.c, "10-002b"),
+#endif
 #endif
 };
 
@@ -5239,7 +5248,12 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 	CLK_LOOKUP("bus_clk",      gcc_ce1_axi_clk.c,     "scm"),
 	CLK_LOOKUP("core_clk_src", ce1_clk_src.c,         "scm"),
 
+#if defined(CONFIG_MACH_H3GDUOS)
+	CLK_LOOKUP("gp1_clk", gcc_gp1_clk.c, NULL),
+	CLK_LOOKUP("gp1_src_clk", gp1_clk_src.c, NULL),
+#else
 	CLK_LOOKUP("core_clk", gcc_gp1_clk.c, ""),
+#endif
 	CLK_LOOKUP("gp2_clk", gcc_gp2_clk.c, NULL),
 	CLK_LOOKUP("core_clk", gcc_gp3_clk.c, ""),
 
