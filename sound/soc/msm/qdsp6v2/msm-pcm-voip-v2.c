@@ -33,7 +33,12 @@
 #include "audio_ocmem.h"
 
 #define SHARED_MEM_BUF 2
+#if defined(CONFIG_SEC_H_PROJECT)
+#define VOIP_MIN_Q_LEN 2
 #define VOIP_MAX_Q_LEN 10
+#else
+#define VOIP_MAX_Q_LEN 2
+#endif
 #define VOIP_MAX_VOC_PKT_SIZE 4096
 #define VOIP_MIN_VOC_PKT_SIZE 320
 
@@ -183,11 +188,20 @@ static struct snd_pcm_hardware msm_pcm_hardware = {
 	.rate_max =             16000,
 	.channels_min =         1,
 	.channels_max =         1,
+#if defined(CONFIG_SEC_H_PROJECT)
+	.buffer_bytes_max =	sizeof(struct voip_buf_node) * VOIP_MIN_Q_LEN,
+#else
 	.buffer_bytes_max =	sizeof(struct voip_buf_node) * VOIP_MAX_Q_LEN,
+#endif
 	.period_bytes_min =	VOIP_MIN_VOC_PKT_SIZE,
 	.period_bytes_max =	VOIP_MAX_VOC_PKT_SIZE,
+#if defined(CONFIG_SEC_H_PROJECT)
+	.periods_min =		VOIP_MIN_Q_LEN,
+	.periods_max =		VOIP_MAX_Q_LEN,
+#else
 	.periods_min =		VOIP_MAX_Q_LEN,
 	.periods_max =		VOIP_MAX_Q_LEN,
+#endif
 	.fifo_size =            0,
 };
 
@@ -373,7 +387,7 @@ static void voip_process_ul_pkt(uint8_t *voc_pkt,
 		snd_pcm_period_elapsed(prtd->capture_substream);
 	} else {
 		spin_unlock_irqrestore(&prtd->dsp_ul_lock, dsp_flags);
-		pr_err("UL data dropped\n");
+		pr_debug("UL data dropped\n");
 	}
 
 	wake_up(&prtd->out_wait);
@@ -455,7 +469,7 @@ static void voip_process_dl_pkt(uint8_t *voc_pkt, void *private_data)
 	} else {
 		*((uint32_t *)voc_pkt) = 0;
 		spin_unlock_irqrestore(&prtd->dsp_lock, dsp_flags);
-		pr_err("DL data not available\n");
+		pr_debug("DL data not available\n");
 	}
 	wake_up(&prtd->in_wait);
 }
@@ -810,7 +824,7 @@ static int voip_config_vocoder(struct snd_pcm_substream *substream)
 	uint32_t evrc_min_rate_type = 0;
 	uint32_t evrc_max_rate_type = 0;
 
-        pr_debug("%s(): mode=%d, playback sample rate=%d, capture sample rate=%d\n",
+        pr_info("%s(): mode=%d, playback sample rate=%d, capture sample rate=%d\n",
                   __func__, prtd->mode, prtd->play_samp_rate, prtd->cap_samp_rate);
 
 	if ((runtime->format != FORMAT_S16_LE) && ((prtd->mode == MODE_PCM) ||
@@ -908,9 +922,13 @@ static int voip_config_vocoder(struct snd_pcm_substream *substream)
 				   evrc_min_rate_type,
 				   evrc_max_rate_type);
 	else {
-		pr_debug("%s: Invalid rate playback %d, capture %d\n",
-			 __func__, prtd->play_samp_rate,
-			 prtd->cap_samp_rate);
+		if((prtd->play_samp_rate != 0) &&
+			(prtd->cap_samp_rate == 0) )
+			pr_info("%s: TX setting is not complete ", __func__);
+		else
+			pr_err("%s: Invalid rate playback %d, capture %d\n",
+				__func__, prtd->play_samp_rate,
+				prtd->cap_samp_rate);
 
 		ret = -EINVAL;
 	}
@@ -1016,11 +1034,18 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct snd_dma_buffer *dma_buf = &substream->dma_buffer;
 	struct voip_buf_node *buf_node = NULL;
 	int i = 0, offset = 0;
-
+#if defined(CONFIG_SEC_H_PROJECT)
+	int periods = VOIP_MIN_Q_LEN;
+#endif
 	pr_debug("%s: voip\n", __func__);
 
 	mutex_lock(&voip_info.lock);
 
+#if defined(CONFIG_SEC_H_PROJECT)
+	periods = params_periods(params);
+	pr_info("%s: periods = %d\n", __func__, periods);
+	runtime->hw.buffer_bytes_max = sizeof(struct voip_buf_node) * periods;
+#endif
 	dma_buf->dev.type = SNDRV_DMA_TYPE_DEV;
 	dma_buf->dev.dev = substream->pcm->card->dev;
 	dma_buf->private_data = NULL;
@@ -1038,7 +1063,11 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 	memset(dma_buf->area, 0, runtime->hw.buffer_bytes_max);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+#if defined(CONFIG_SEC_H_PROJECT)
+		for (i = 0; i < periods; i++) {
+#else
 		for (i = 0; i < VOIP_MAX_Q_LEN; i++) {
+#endif
 			buf_node = (void *)dma_buf->area + offset;
 
 			list_add_tail(&buf_node->list,
@@ -1046,7 +1075,11 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 			offset = offset + sizeof(struct voip_buf_node);
 		}
 	} else {
+#if defined(CONFIG_SEC_H_PROJECT)
+		for (i = 0; i < periods; i++) {
+#else
 		for (i = 0; i < VOIP_MAX_Q_LEN; i++) {
+#endif
 			buf_node = (void *) dma_buf->area + offset;
 			list_add_tail(&buf_node->list,
 					&voip_info.free_out_queue);
