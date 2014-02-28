@@ -259,7 +259,9 @@ static char *sec_build_time[] = {
 	__DATE__,
 	__TIME__
 };
+#ifdef CONFIG_SEC_DEBUG_SUBSYS
 static char build_root[] = __FILE__;
+#endif
 
 /* klaatu - schedule log */
 #ifdef CONFIG_SEC_DEBUG_SCHED_LOG
@@ -738,6 +740,7 @@ DEFINE_PER_CPU(struct sec_debug_core_t, sec_debug_core_reg);
 DEFINE_PER_CPU(struct sec_debug_mmu_reg_t, sec_debug_mmu_reg);
 DEFINE_PER_CPU(enum sec_debug_upload_cause_t, sec_debug_upload_cause);
 
+#ifdef CONFIG_SEC_DEBUG_SCHED_LOG
 /* save last_pet and last_ns with these nice functions */
 void sec_debug_save_last_pet(unsigned long long last_pet)
 {
@@ -752,6 +755,7 @@ void sec_debug_save_last_ns(unsigned long long last_ns)
 }
 EXPORT_SYMBOL(sec_debug_save_last_pet);
 EXPORT_SYMBOL(sec_debug_save_last_ns);
+#endif
 
 #ifdef CONFIG_HOTPLUG_CPU
 static void pull_down_other_cpus(void)
@@ -1151,6 +1155,7 @@ static int dbg_set_cpu_affinity(const char *val, struct kernel_param *kp)
 	return 0;
 }
 
+#ifdef CONFIG_SEC_MISC
 /* for sec debug level */
 static int __init sec_debug_level(char *str)
 {
@@ -1218,6 +1223,7 @@ int kernel_sec_get_debug_level(void)
 	return sec_dbg_level;
 }
 EXPORT_SYMBOL(kernel_sec_get_debug_level);
+#endif
 
 /* core reg dump function*/
 static void sec_debug_save_core_reg(struct sec_debug_core_t *core_reg)
@@ -1576,6 +1582,7 @@ static void sec_debug_set_build_info(void)
 	strlcat(p, sec_build_time[1], sizeof(sec_build_info));
 }
 
+#ifdef CONFIG_SEC_DEBUG_SCHED_LOG
 static int __init __init_sec_debug_log(void)
 {
 	int i;
@@ -1642,6 +1649,7 @@ static int __init __init_sec_debug_log(void)
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_SEC_DEBUG_SUBSYS
 int sec_debug_save_die_info(const char *str, struct pt_regs *regs)
